@@ -1,0 +1,4 @@
+input
+words
+to
+check
