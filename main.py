@@ -43,7 +43,6 @@ load_dotenv()
 token = os.getenv("TOKEN")
 proxy_url = os.getenv("PROXY")
 
-
 async def check_username_availability(username, session):
     headers = {
         "authority": "discord.com",
@@ -58,8 +57,12 @@ async def check_username_availability(username, session):
 
     retries = 3
     for attempt in range(retries):
+        proxy = None
+        if proxy_url:
+            proxy = proxy_url
+
         async with session.post(
-            url, headers=headers, json=data, proxy=proxy_url
+            url, headers=headers, json=data, proxy=proxy
         ) as response:
             if response.status == 200:
                 result = await response.json()
