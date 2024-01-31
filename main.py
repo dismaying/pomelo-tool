@@ -10,23 +10,36 @@ By using this script, you agree to abide by the terms of this license.
 
 """
 
+"""
+End-User License Agreement (EULA)
+
+1. This script is provided as-is, without any warranties or guarantees.
+2. You may use, modify, and distribute this script for personal or educational purposes.
+3. Commercial use or distribution without explicit permission is prohibited.
+4. The author is not responsible for any damages or liabilities resulting from the use of this script.
+
+By using this script, you agree to abide by the terms of this license.
+
+"""
 import os
 import time
-import aiohttp
 import asyncio
+import aiohttp
 from dotenv import load_dotenv
 from colorama import Fore, Style
 
+# Load environment variables
+load_dotenv()
+TOKEN = os.getenv("TOKEN")
+PROXY_URL = os.getenv("PROXY")
 
+# Clear screen function
 def clear_screen():
-    if os.name == "nt":
-        _ = os.system("cls")
-    else:
-        _ = os.system("clear")
+    os.system("cls" if os.name == "nt" else "clear")
 
-
-def def_leppard_banner():
-    return f"""{Fore.RED}
+# Banner display function
+def display_banner():
+    banner = f"""{Fore.RED}
      ,
      Et           :                                 :                              
      E#t         t#,                               t#,               L.            
@@ -48,88 +61,52 @@ def def_leppard_banner():
   	                   {time.strftime("%d/%m/%Y"):^11} |  Pomelo Tool
 			└─────────────────────────────┘
 """
+    print(banner)
 
 
-load_dotenv()
-
-token = os.getenv("TOKEN")
-proxy_url = os.getenv("PROXY")
-
+# Function to check username availability
 async def check_username_availability(username, session):
     headers = {
         "authority": "discord.com",
         "accept": "*/*",
-        "accept-language": "en-US,en;q=0.9,en;q=0.8",
-        "authorization": f"{token}",
+        "accept-language": "en-US,en;q=0.9",
+        "authorization": TOKEN,
     }
-
     url = "https://discord.com/api/v9/users/@me/pomelo-attempt"
-
     data = {"username": username}
 
-    retries = 3
-    for attempt in range(retries):
-        proxy = None
-        if proxy_url:
-            proxy = proxy_url
+    async with session.post(url, headers=headers, json=data, proxy=PROXY_URL) as response:
+        if response.status == 200:
+            result = await response.json()
+            if not result.get("taken"):
+                print(f"{Fore.GREEN}[Available] {username}{Style.RESET_ALL}")
+        elif response.status in [401, 403]:
+            print(f"{Fore.YELLOW}[Access Denied] {username} - Status: {response.status}{Style.RESET_ALL}")
+            # Stop further requests if token is invalid or access is forbidden
+            return False
+        elif response.status == 429:
+            retry_after = int(response.headers.get("Retry-After", 1))
+            print(f"{Fore.RED}[Rate limited] Seconds Remaining: {retry_after} {Style.RESET_ALL}")
+            await asyncio.sleep(retry_after)
+        else:
+            print(f"{Fore.RED}[Check Failed] {username} - Status: {response.status}{Style.RESET_ALL}")
+        return True
 
-        async with session.post(
-            url, headers=headers, json=data, proxy=proxy
-        ) as response:
-            if response.status == 200:
-                result = await response.json()
-                if not result.get("taken"):
-                    print(f"{Fore.GREEN}[Available] {username}{Style.RESET_ALL}")
-                break
-            elif response.status == 429:
-                retry_after = int(response.headers.get("Retry-After", 1))
-                print(
-                    f"\n{Fore.RED}[Rate limited] Waiting for {retry_after} seconds.{Style.RESET_ALL}"
-                )
-                await asyncio.sleep(retry_after)
-            else:
-                print(
-                    f"\n{Fore.RED}[Check Failed For: '{username}'] Status code: {response.status}.{Style.RESET_ALL}"
-                )
-
-
-with open("words.txt", "r") as file:
-    usernames = file.read().splitlines()
-
-requests_per_minute = 10
-tokens_per_request = 1
-max_tokens = requests_per_minute
-
-
+# Function to process usernames
 async def process_usernames(usernames):
     async with aiohttp.ClientSession() as session:
-        tokens_available = max_tokens
-        last_request_time = time.time()
-
         for username in usernames:
-            current_time = time.time()
-            elapsed_time_since_last_request = current_time - last_request_time
+            success = await check_username_availability(username, session)
+            if not success:
+                break  # Stop processing if a 401 or 403 error occurs
 
-            tokens_to_add = elapsed_time_since_last_request * (requests_per_minute / 60)
-            tokens_available = min(tokens_available + tokens_to_add, max_tokens)
-
-            if tokens_available >= tokens_per_request:
-                await check_username_availability(username, session)
-                last_request_time = time.time()
-                tokens_available -= tokens_per_request
-
-            else:
-                sleep_duration = (tokens_per_request - tokens_available) / (
-                    requests_per_minute / 60
-                )
-                await asyncio.sleep(sleep_duration)
-
-
+# Main function
 async def main():
     clear_screen()
-    print(def_leppard_banner())  # Display the Def Leppard ASCII banner
+    display_banner()
+    with open("words.txt", "r") as file:
+        usernames = file.read().splitlines()
     await process_usernames(usernames)
 
-
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+# Run the main function
+asyncio.run(main())
