@@ -9,18 +9,6 @@ End-User License Agreement (EULA)
 By using this script, you agree to abide by the terms of this license.
 
 """
-
-"""
-End-User License Agreement (EULA)
-
-1. This script is provided as-is, without any warranties or guarantees.
-2. You may use, modify, and distribute this script for personal or educational purposes.
-3. Commercial use or distribution without explicit permission is prohibited.
-4. The author is not responsible for any damages or liabilities resulting from the use of this script.
-
-By using this script, you agree to abide by the terms of this license.
-
-"""
 import os
 import time
 import asyncio
